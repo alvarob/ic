@@ -1,4 +1,4 @@
-import sys, random
+import os, random, sys
 
 def split(
         in_file_path,
@@ -17,6 +17,19 @@ def split(
             else:
                 test_file.writelines((line))
 
+                
+def split_with_suffix(
+        in_file_path,
+        train_percentage,
+        train_suffix="train",
+        test_suffix="test"
+):
+    base_name, _ = os.path.splitext(in_file_path)
+    train_out_path = base_name + "." + train_suffix + ".csv"
+    test_out_path = base_name + "." + test_suffix + ".csv"
+    split(in_file_path, train_out_path, test_out_path, train_percentage)
+
+    
 def main():
     in_file = sys.argv[1]
     train_file = sys.argv[2]

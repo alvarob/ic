@@ -36,10 +36,22 @@ def train(
     return model
 
 
+def train_and_save(
+    model,
+    classes,
+    training_csv_path,
+    out_model_path,
+    process_f=process_row
+):
+  trained_model = train(training_csv_path, model, classes, process_f)
+  joblib.dump(model, out_model_path)
+
+  
 def main(model, classes, process_f=process_row):
     training_csv_path = sys.argv[1]
     out_model_path = sys.argv[2]
     print(training_csv_path, out_model_path)
-
-    trained_model = train(training_csv_path, model, classes, process_f)
-    joblib.dump(model, out_model_path)
+    train_and_save(
+      model, classes, training_csv_path, out_model_path, process_f
+    )
+    

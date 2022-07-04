@@ -1,17 +1,15 @@
 import csv
 
 import joblib
-from sklearn.metrics import precision_score, recall_score, accuracy_score
+from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix
 
 from ic.models.common import process_row
 
 
-def evaluate2(model_file, test_csv, process_f=process_row):
-    model = joblib.load(model_file)
-
+def evaluate_v2(model, test_csv, process_f=process_row):
     y_test = []
     y_pred = []
-
+    error_count = 0
     with open(test_csv, 'r', errors='ignore') as file:
         csv_reader = csv.reader(file)
         next(csv_reader) # skip header
@@ -24,13 +22,20 @@ def evaluate2(model_file, test_csv, process_f=process_row):
                 y_pred.append(prediction)
                 y_test.append(y)
             except ValueError:
-                pass
+                error_count += 1
+
+    conf_matrix = confusion_matrix(y_test, y_pred)
+    (true_negative_count, false_positive_count), (false_negative_count, true_positive_count) = conf_matrix
 
     return {
         "recall": recall_score(y_test, y_pred),
         "precision": precision_score(y_test, y_pred),
-        "accuracy": accuracy_score(y_test, y_pred)
+        "accuracy": accuracy_score(y_test, y_pred),
+        "false_alarm_rate": false_positive_count/(false_positive_count+true_negative_count),
+        "confusion_matrix": conf_matrix,
+        "lines_errored": error_count
     }
+
 
 def evaluate(model, test_csv, process_f=process_row):
     with open(test_csv, 'r', errors='ignore') as file:
