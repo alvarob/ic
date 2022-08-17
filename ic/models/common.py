@@ -1,13 +1,15 @@
-import csv, sys
+import csv
+import sys
 
 import joblib
 
+
 def process_row(row):
-  y = [0 if row[-1] == "BENIGN" else 1]
-  x = [ float(val) for val in
-        [ row[5], *row[7:-1] ]
-      ]
-  return (x, y)
+    y = [0 if row[-1] == "BENIGN" else 1]
+    x = [float(val) for val in
+         [row[5], *row[7:-1]]]
+    return (x, y)
+
 
 def train(
     training_csv_path, model, classes, process_f=process_row
@@ -15,11 +17,11 @@ def train(
     error_set = set()
     line_count = 0
     error_count = 0
-    
+
     with open(training_csv_path) as file:
         csv_reader = csv.reader(file)
-        next(csv_reader) # skip header
-        
+        next(csv_reader)  # skip header
+
         for row in csv_reader:
             line_count += 1
             try:
@@ -43,10 +45,10 @@ def train_and_save(
     out_model_path,
     process_f=process_row
 ):
-  trained_model = train(training_csv_path, model, classes, process_f)
-  joblib.dump(model, out_model_path)
+    trained_model = train(training_csv_path, model, classes, process_f)
+    joblib.dump(trained_model, out_model_path)
 
-  
+
 def main(model, classes, process_f=process_row):
     training_csv_path = sys.argv[1]
     out_model_path = sys.argv[2]
@@ -54,4 +56,3 @@ def main(model, classes, process_f=process_row):
     train_and_save(
       model, classes, training_csv_path, out_model_path, process_f
     )
-    
