@@ -1,5 +1,6 @@
 import csv, glob, os
 
+import pandas as pd
 from IPython.display import  HTML
 
 
@@ -31,9 +32,16 @@ def basename(file_path):
     base_path, _ = os.path.splitext(file_path)
     return os.path.basename(base_path)
 
-  
+
 def h(i, text):
     return HTML(f'<h{i}>{text}</h{i}>')
 
 
 HR = HTML('<hr/>')
+
+
+def yield_dataset(path, target):
+    chunks = pd.read_csv(path, chunksize=1000)
+    for chunk in chunks:
+        for _, row in chunk.iterrows():
+            yield (row[row.index != target].to_dict(), row[target])

@@ -17,20 +17,20 @@ def should_ignore(row):
             return True
 
     return False
-    
-    
+
+
 def preprocess(file_paths, suffix='processed'):
     for file_path in file_paths:
         print("Processando arquivo", file_path)
 
         base_name, _ = os.path.splitext(file_path)
         out_path = base_name + "." + suffix + ".csv"
-        
+
         with open(file_path, errors='ignore') as in_file, open(out_path, 'w') as processed_file:
             csv_reader = csv.reader(in_file)
             header = in_file.readline()
             processed_file.writelines((header))
-            
+
             ignored = 0
             total = 0
 
@@ -78,7 +78,7 @@ def remove_problem_rows(dataframe):
     all_but_label = dataframe.columns.tolist()[:-1]
     new_df = dataframe[~problem_filter(dataframe, all_but_label)]
     return new_df
-    
+
 
 def cleaned_up_chunks(in_file_path, chunksize=1000):
     chunks = pd.read_csv(in_file_path, chunksize=chunksize)
@@ -102,7 +102,7 @@ class WarmUpBuilder():
 
     def is_done(self):
         return all([ x >= self.n_samples for x in self.counts ])
-        
+
     def add_row(self, row):
         if self.is_done():
             self.leftover = self.leftover.append(row)
@@ -121,9 +121,9 @@ class WarmUpBuilder():
         for int_field in ['Destination Port', 'Label']:
             self.dataframe[int_field] = self.dataframe[int_field].astype(int)
             self.leftover[int_field] = self.leftover[int_field].astype(int)
-            
+
         return (self.dataframe, self.leftover)
-            
+
 
 def preprocess_with_warmup(in_file_path, out_file_dir, suffix="processed"):
     out_file = f'{out_file_dir}/{util.basename(in_file_path)}.{suffix}.csv'
@@ -147,12 +147,22 @@ def preprocess_with_warmup(in_file_path, out_file_dir, suffix="processed"):
 
     for chunk in chunks:
         chunk.to_csv(out_file, mode="a", header=False, index=False)
-    
-    
+
+def preprocess_and_join(in_files, out_file):
+    first = True
+
+    for file in in_files:
+        chunks = cleaned_up_chunks(file)
+
+        for chunk in chunks:
+            mode = 'w' if first else 'a'
+            chunk.to_csv(out_file, mode=mode, header=first, index=False)
+            first = False
+
+
 def main():
     in_files = sys.argv[1:]
     preprocess(in_files)
 
 if __name__ == "__main__":
     main()
-

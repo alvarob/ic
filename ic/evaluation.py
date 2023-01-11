@@ -1,10 +1,13 @@
 import csv
+import time
 
 import joblib
+import pandas as pd
+import river
 from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix
 
 from ic.models.common import process_row
-
+from ic import util
 
 def evaluate_v2(model, test_csv, process_f=process_row):
     y_test = []
@@ -53,7 +56,7 @@ def evaluate(model, test_csv, process_f=process_row):
             try:
                 (x, y) = process_f(row)
                 prediction = model.predict([x])
-                
+
                 total_count += 1
 
                 if y[0] != 0 and prediction[0] != 0:
@@ -98,6 +101,77 @@ def evaluate(model, test_csv, process_f=process_row):
             "false_alarm_rate": false_alarm_rate
         }
 
-                    
-                    
-                
+def step_to_dataframe(evaluation_step):
+    return pd.DataFrame({
+        'accuracy': evaluation_step['Accuracy'].get(),
+        'recall': evaluation_step['Recall'].get(),
+        'precision': evaluation_step['Precision'].get(),
+        'f1': evaluation_step['F1'].get(),
+    }, index=[evaluation_step['Step']])
+
+
+def evaluate_prequential_delayed(
+    model, stream, delay=500, eval_step=500
+):
+    metrics = river.metrics.base.Metrics(
+        metrics=[
+            river.metrics.Accuracy(),
+            river.metrics.Recall(),
+            river.metrics.Precision(),
+            river.metrics.F1()
+        ]
+    )
+
+    step_iterator = river.evaluate.iter_progressive_val_score(
+        model=model,
+        dataset=stream,
+        metric=metrics,
+        step=eval_step,
+        delay=delay
+    )
+
+    metrics_df = pd.DataFrame()
+
+    for step in step_iterator:
+        metrics_df = pd.concat([metrics_df, step_to_dataframe(step)])
+
+    return metrics_df
+
+
+def metrics_to_dataframe(step, metrics):
+    return pd.DataFrame(dict(
+        zip(
+            ['accuracy', 'recall', 'precision', 'f1'],
+            [ [ m.get() ] for m in metrics ]
+        )
+    ), index=[step])
+
+
+def warm_up_and_evaluate(model, stream, n_warm_up_rows=1000):
+    for _ in range(n_warm_up_rows):
+        X, y = next(stream)
+        model.learn_one(X, y)
+
+    return evaluate_prequential_delayed(model, stream)
+
+
+def process_evaluation(
+    model,
+    label,
+    file_path,
+    out_data_prefix='2022_08_01'
+):
+    out_path = f'../../data/{out_data_prefix}/metrics/{util.basename(file_path)}.{label}.metrics.csv'
+    stream = util.yield_dataset(file_path, target='Label')
+
+    start_time = time.time()
+    h_m = time.strftime('%H:%M')
+    print(f'Starting {label} - {h_m}')
+
+    metrics = warm_up_and_evaluate(model, stream)
+    metrics.to_csv(out_path, index_label='step')
+
+    print(f'Took {int((time.time()-start_time)/60)} mins\n')
+
+    model_out_path = f'../../trained_models/{out_data_prefix}/{label}_{util.basename(file_path)}.joblib'
+    joblib.dump(model, model_out_path)
